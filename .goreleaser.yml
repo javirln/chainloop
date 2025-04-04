@@ -22,8 +22,9 @@ builds:
       - -X main.Version={{ .Version }}
     targets:
       - linux_amd64
-  - binary: chainloop
+  - binary: chainloop-{{ .Os }}-{{ .Arch }}
     id: cli
+    no_unique_dist_dir: true
     main: ./app/cli
     ldflags:
       - "{{ .Env.COMMON_LDFLAGS }}"
@@ -62,6 +63,10 @@ archives:
     # Override default to not to include the readme nor license file
     files:
       - none*
+  - format: binary
+    id: binary
+    name_template: "{{ .Binary }}"
+    allow_different_binary_count: true
 
 checksum:
   name_template: "checksums.txt"
