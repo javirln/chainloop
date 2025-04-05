@@ -3,7 +3,11 @@ RUN mkdir -p /.config/chainloop
 
 FROM scratch
 
-COPY ./chainloop /
+# Define build arguments for OS and architecture
+ARG TARGETOS
+ARG TARGETARCH
+
+COPY ./chainloop-${TARGETOS}-${TARGETARCH} /chainloop
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder --chown=1001:1001 /.config/chainloop /.config/chainloop
 

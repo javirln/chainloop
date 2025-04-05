@@ -167,6 +167,8 @@ dockers:
     use: buildx
     build_flag_templates:
       - "--pull"
+      - "--build-arg=TARGETARCH=amd64"
+      - "--build-arg=TARGEOS=linux"
       - "--platform=linux/amd64"
   - dockerfile: app/cli/Dockerfile.goreleaser
     ids:
@@ -176,6 +178,8 @@ dockers:
     use: buildx
     build_flag_templates:
       - "--pull"
+      - "--build-arg=TARGETARCH=arm64"
+      - "--build-arg=TARGEOS=linux"
       - "--platform=linux/arm64"
 
 docker_manifests:
