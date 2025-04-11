@@ -26,6 +26,6 @@ policyGroups:
     with:
       provenance_material_name: slsa-attestation
       runner: GITHUB_ACTION
-      federated_identity: "true"
+      federated_identity: "false"
 runner:
   type: GITHUB_ACTION
