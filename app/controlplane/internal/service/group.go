@@ -373,7 +373,7 @@ func (g GroupService) RemoveMember(ctx context.Context, req *pb.GroupServiceRemo
 		removeOpts.GroupName = &groupName
 	}
 
-	// Call the business logic to add the member
+	// Call the business logic to remove the member
 	err = g.groupUseCase.RemoveMemberFromGroup(ctx, removeOpts)
 	if err != nil {
 		return nil, handleUseCaseErr(err, g.log)
