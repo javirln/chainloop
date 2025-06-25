@@ -96,16 +96,7 @@ func (s *groupIntegrationTestSuite) TestCreate() {
 				UserID:      uuid.MustParse(s.user.ID),
 			},
 			expectError: true,
-			errorMsg:    "name and description cannot be empty",
-		},
-		{
-			name: "empty description",
-			opts: &biz.CreateGroupOpts{
-				Name:   "test-group",
-				UserID: uuid.MustParse(s.user.ID),
-			},
-			expectError: true,
-			errorMsg:    "name and description cannot be empty",
+			errorMsg:    "name cannot be empty",
 		},
 		{
 			name: "nil user ID",
@@ -134,7 +125,7 @@ func (s *groupIntegrationTestSuite) TestCreate() {
 			s.NoError(err)
 			s.NotNil(group)
 			s.Equal(tc.opts.Name, group.Name)
-			s.Equal(tc.opts.Description, group.Description)
+			s.Equal(*tc.opts.Description, group.Description)
 			s.NotEmpty(group.ID)
 			s.NotNil(group.CreatedAt)
 			s.NotNil(group.Organization)
@@ -235,7 +226,7 @@ func (s *groupIntegrationTestSuite) TestUpdate() {
 
 		s.NoError(err)
 		s.NotNil(updatedGroup)
-		s.Equal(newDescription, &updatedGroup.Description)
+		s.Equal(newDescription, updatedGroup.Description)
 		s.Equal(name, updatedGroup.Name) // Name should not change
 	})
 
