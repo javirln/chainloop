@@ -16,6 +16,8 @@ import (
 	"github.com/chainloop-dev/chainloop/app/controlplane/pkg/data/ent/attestation"
 	"github.com/chainloop-dev/chainloop/app/controlplane/pkg/data/ent/casbackend"
 	"github.com/chainloop-dev/chainloop/app/controlplane/pkg/data/ent/casmapping"
+	"github.com/chainloop-dev/chainloop/app/controlplane/pkg/data/ent/group"
+	"github.com/chainloop-dev/chainloop/app/controlplane/pkg/data/ent/groupuser"
 	"github.com/chainloop-dev/chainloop/app/controlplane/pkg/data/ent/integration"
 	"github.com/chainloop-dev/chainloop/app/controlplane/pkg/data/ent/integrationattachment"
 	"github.com/chainloop-dev/chainloop/app/controlplane/pkg/data/ent/membership"
@@ -94,6 +96,8 @@ func checkColumn(table, column string) error {
 			attestation.Table:             attestation.ValidColumn,
 			casbackend.Table:              casbackend.ValidColumn,
 			casmapping.Table:              casmapping.ValidColumn,
+			group.Table:                   group.ValidColumn,
+			groupuser.Table:               groupuser.ValidColumn,
 			integration.Table:             integration.ValidColumn,
 			integrationattachment.Table:   integrationattachment.ValidColumn,
 			membership.Table:              membership.ValidColumn,

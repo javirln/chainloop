@@ -1,0 +1,26 @@
+{
+  "$id": "controlplane.v1.GroupServiceUpdateRequest.jsonschema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "GroupServiceUpdateRequest contains the fields that can be updated for a group",
+  "patternProperties": {
+    "^(group_id)$": {
+      "description": "UUID of the group to update",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "description": {
+      "description": "New description for the group (if provided)",
+      "type": "string"
+    },
+    "groupId": {
+      "description": "UUID of the group to update",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "type": "string"
+    }
+  },
+  "title": "Group Service Update Request",
+  "type": "object"
+}
