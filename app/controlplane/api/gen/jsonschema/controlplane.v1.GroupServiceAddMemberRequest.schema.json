@@ -1,8 +1,8 @@
 {
-  "$id": "controlplane.v1.GroupServiceListMembersRequest.schema.json",
+  "$id": "controlplane.v1.GroupServiceAddMemberRequest.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "GroupServiceListMembersRequest contains the identifier for the group whose members are to be listed",
+  "description": "GroupServiceAddMemberRequest contains the information needed to add a user to a group",
   "patternProperties": {
     "^(groupId)$": {
       "description": "UUID of the group to which the user will be added",
@@ -14,8 +14,13 @@
       "minLength": 1,
       "type": "string"
     },
-    "^(memberEmail)$": {
-      "description": "Optional filter to search by member email address",
+    "^(isMaintainer)$": {
+      "description": "Indicates whether the user should have maintainer (admin) privileges in the group",
+      "type": "boolean"
+    },
+    "^(userEmail)$": {
+      "description": "The user to add to the group",
+      "format": "email",
       "type": "string"
     }
   },
@@ -30,19 +35,16 @@
       "minLength": 1,
       "type": "string"
     },
-    "maintainers": {
-      "description": "Optional filter to search only by maintainers or not",
+    "is_maintainer": {
+      "description": "Indicates whether the user should have maintainer (admin) privileges in the group",
       "type": "boolean"
     },
-    "member_email": {
-      "description": "Optional filter to search by member email address",
+    "user_email": {
+      "description": "The user to add to the group",
+      "format": "email",
       "type": "string"
-    },
-    "pagination": {
-      "$ref": "controlplane.v1.OffsetPaginationRequest.schema.json",
-      "description": "Pagination parameters to limit and offset results"
     }
   },
-  "title": "Group Service List Members Request",
+  "title": "Group Service Add Member Request",
   "type": "object"
 }

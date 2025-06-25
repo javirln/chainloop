@@ -1,0 +1,42 @@
+{
+  "$id": "controlplane.v1.GroupServiceRemoveMemberRequest.jsonschema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "GroupServiceRemoveMemberRequest contains the information needed to remove a user from a group",
+  "patternProperties": {
+    "^(group_id)$": {
+      "description": "UUID of the group from which the user will be removed",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "type": "string"
+    },
+    "^(group_name)$": {
+      "description": "Name of the group from which the user will be removed, if group_id is not provided",
+      "minLength": 1,
+      "type": "string"
+    },
+    "^(user_email)$": {
+      "description": "The user to remove from the group",
+      "format": "email",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "groupId": {
+      "description": "UUID of the group from which the user will be removed",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "type": "string"
+    },
+    "groupName": {
+      "description": "Name of the group from which the user will be removed, if group_id is not provided",
+      "minLength": 1,
+      "type": "string"
+    },
+    "userEmail": {
+      "description": "The user to remove from the group",
+      "format": "email",
+      "type": "string"
+    }
+  },
+  "title": "Group Service Remove Member Request",
+  "type": "object"
+}

@@ -28,13 +28,19 @@ var (
 	_ auditor.LogEntry = (*GroupCreated)(nil)
 	_ auditor.LogEntry = (*GroupUpdated)(nil)
 	_ auditor.LogEntry = (*GroupDeleted)(nil)
+	_ auditor.LogEntry = (*GroupMemberAdded)(nil)
+	_ auditor.LogEntry = (*GroupMemberRemoved)(nil)
+	_ auditor.LogEntry = (*GroupMemberUpdated)(nil)
 )
 
 const (
-	GroupType              auditor.TargetType = "Group"
-	GroupCreatedActionType string             = "GroupCreated"
-	GroupUpdatedActionType string             = "GroupUpdated"
-	GroupDeletedActionType string             = "GroupDeleted"
+	GroupType                    auditor.TargetType = "Group"
+	GroupCreatedActionType       string             = "GroupCreated"
+	GroupUpdatedActionType       string             = "GroupUpdated"
+	GroupDeletedActionType       string             = "GroupDeleted"
+	GroupMemberAddedActionType   string             = "GroupMemberAdded"
+	GroupMemberRemovedActionType string             = "GroupMemberRemoved"
+	GroupMemberUpdatedActionType string             = "GroupMemberUpdated"
 )
 
 // GroupBase is the base struct for group events
@@ -126,4 +132,104 @@ func (g *GroupDeleted) ActionInfo() (json.RawMessage, error) {
 
 func (g *GroupDeleted) Description() string {
 	return fmt.Sprintf("{{ if .ActorEmail }}{{ .ActorEmail }}{{ else }}API Token {{ .ActorID }}{{ end }} has deleted the group %s", g.GroupName)
+}
+
+// GroupMemberAdded represents the addition of a member to a group
+type GroupMemberAdded struct {
+	*GroupBase
+	UserID     *uuid.UUID `json:"user_id,omitempty"`
+	UserEmail  string     `json:"user_email,omitempty"`
+	Maintainer bool       `json:"maintainer,omitempty"`
+}
+
+func (g *GroupMemberAdded) ActionType() string {
+	return GroupMemberAddedActionType
+}
+
+func (g *GroupMemberAdded) ActionInfo() (json.RawMessage, error) {
+	if _, err := g.GroupBase.ActionInfo(); err != nil {
+		return nil, err
+	}
+
+	if g.UserID == nil {
+		return nil, fmt.Errorf("user ID is required")
+	}
+
+	return json.Marshal(&g)
+}
+
+func (g *GroupMemberAdded) Description() string {
+	maintainerStatus := ""
+	if g.Maintainer {
+		maintainerStatus = " as a maintainer"
+	}
+
+	return fmt.Sprintf("{{ if .ActorEmail }}{{ .ActorEmail }}{{ else }}API Token {{ .ActorID }}{{ end }} has added user %s to the group %s%s",
+		g.UserEmail, g.GroupName, maintainerStatus)
+}
+
+// GroupMemberRemoved represents the removal of a member from a group
+type GroupMemberRemoved struct {
+	*GroupBase
+	UserID    *uuid.UUID `json:"user_id,omitempty"`
+	UserEmail string     `json:"user_email,omitempty"`
+}
+
+func (g *GroupMemberRemoved) ActionType() string {
+	return GroupMemberRemovedActionType
+}
+
+func (g *GroupMemberRemoved) ActionInfo() (json.RawMessage, error) {
+	if _, err := g.GroupBase.ActionInfo(); err != nil {
+		return nil, err
+	}
+
+	if g.UserID == nil {
+		return nil, fmt.Errorf("user ID is required")
+	}
+
+	return json.Marshal(&g)
+}
+
+func (g *GroupMemberRemoved) Description() string {
+	return fmt.Sprintf("{{ if .ActorEmail }}{{ .ActorEmail }}{{ else }}API Token {{ .ActorID }}{{ end }} has removed user %s from the group %s",
+		g.UserEmail, g.GroupName)
+}
+
+// GroupMemberUpdated represents the update of a member's status in a group
+type GroupMemberUpdated struct {
+	*GroupBase
+	UserID        *uuid.UUID `json:"user_id,omitempty"`
+	UserEmail     string     `json:"user_email,omitempty"`
+	NewMaintainer *bool      `json:"new_maintainer,omitempty"`
+}
+
+func (g *GroupMemberUpdated) ActionType() string {
+	return GroupMemberUpdatedActionType
+}
+
+func (g *GroupMemberUpdated) ActionInfo() (json.RawMessage, error) {
+	if _, err := g.GroupBase.ActionInfo(); err != nil {
+		return nil, err
+	}
+
+	if g.UserID == nil {
+		return nil, fmt.Errorf("user ID is required")
+	}
+
+	if g.NewMaintainer == nil {
+		return nil, fmt.Errorf("new maintainer status is required")
+	}
+
+	return json.Marshal(&g)
+}
+
+func (g *GroupMemberUpdated) Description() string {
+	maintainerStatus := "not a maintainer"
+	if *g.NewMaintainer {
+		maintainerStatus = "a maintainer"
+	}
+
+	return fmt.Sprintf("{{ if .ActorEmail }}{{ .ActorEmail }}{{ else }}API Token {{ .ActorID }}{{ end }} has updated user %s to be %s in the group %s",
+		g.UserEmail, maintainerStatus, g.GroupName)
 }

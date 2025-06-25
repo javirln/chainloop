@@ -231,6 +231,24 @@ func (g GroupService) ListMembers(ctx context.Context, req *pb.GroupServiceListM
 		return nil, errors.BadRequest("invalid", "invalid organization ID")
 	}
 
+	// Initialize the options for listing members
+	opts := &biz.ListMembersOpts{
+		Maintainers: req.Maintainers,
+		MemberEmail: req.MemberEmail,
+	}
+
+	// Handle either groupID or groupName
+	if req.GetGroupId() != "" {
+		groupUUID, err := uuid.Parse(req.GetGroupId())
+		if err != nil {
+			return nil, errors.BadRequest("invalid", "invalid group ID")
+		}
+		opts.GroupID = &groupUUID
+	} else if req.GetGroupName() != "" {
+		groupName := req.GetGroupName()
+		opts.GroupName = &groupName
+	}
+
 	// Initialize the pagination options, with default values
 	paginationOpts := pagination.NewDefaultOffsetPaginationOpts()
 
@@ -245,13 +263,7 @@ func (g GroupService) ListMembers(ctx context.Context, req *pb.GroupServiceListM
 		}
 	}
 
-	// Parse groupID
-	groupUUID, err := uuid.Parse(req.GetGroupId())
-	if err != nil {
-		return nil, errors.BadRequest("invalid", "invalid group ID")
-	}
-
-	grs, count, err := g.groupUseCase.ListMembers(ctx, orgUUID, groupUUID, req.Maintainers, req.MemberEmail, paginationOpts)
+	grs, count, err := g.groupUseCase.ListMembers(ctx, orgUUID, opts, paginationOpts)
 	if err != nil {
 		return nil, handleUseCaseErr(err, g.log)
 	}
@@ -265,6 +277,109 @@ func (g GroupService) ListMembers(ctx context.Context, req *pb.GroupServiceListM
 		Members:    result,
 		Pagination: paginationToPb(count, paginationOpts.Offset(), paginationOpts.Limit()),
 	}, nil
+}
+
+// AddMember adds a member to a group within the current organization.
+func (g GroupService) AddMember(ctx context.Context, req *pb.GroupServiceAddMemberRequest) (*pb.GroupServiceAddMemberResponse, error) {
+	currentUser, err := requireCurrentUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	currentOrg, err := requireCurrentOrg(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse orgID
+	orgUUID, err := uuid.Parse(currentOrg.ID)
+	if err != nil {
+		return nil, errors.BadRequest("invalid", "invalid organization ID")
+	}
+
+	// Parse requesterID (current user)
+	requesterUUID, err := uuid.Parse(currentUser.ID)
+	if err != nil {
+		return nil, errors.BadRequest("invalid", "invalid user ID")
+	}
+
+	// Create options for adding the member
+	addOpts := &biz.AddMemberToGroupOpts{
+		OrganizationID: orgUUID,
+		UserEmail:      req.GetUserEmail(),
+		RequesterID:    requesterUUID,
+		Maintainer:     req.GetIsMaintainer(),
+	}
+
+	// Handle either groupID or groupName
+	if req.GetGroupId() != "" {
+		groupUUID, err := uuid.Parse(req.GetGroupId())
+		if err != nil {
+			return nil, errors.BadRequest("invalid", "invalid group ID")
+		}
+		addOpts.GroupID = &groupUUID
+	} else if req.GetGroupName() != "" {
+		groupName := req.GetGroupName()
+		addOpts.GroupName = &groupName
+	}
+
+	// Call the business logic to add the member
+	_, err = g.groupUseCase.AddMemberToGroup(ctx, addOpts)
+	if err != nil {
+		return nil, handleUseCaseErr(err, g.log)
+	}
+
+	return &pb.GroupServiceAddMemberResponse{}, nil
+}
+
+// RemoveMember removes a member to a group within the current organization.
+func (g GroupService) RemoveMember(ctx context.Context, req *pb.GroupServiceRemoveMemberRequest) (*pb.GroupServiceRemoveMemberResponse, error) {
+	currentUser, err := requireCurrentUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	currentOrg, err := requireCurrentOrg(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse orgID
+	orgUUID, err := uuid.Parse(currentOrg.ID)
+	if err != nil {
+		return nil, errors.BadRequest("invalid", "invalid organization ID")
+	}
+
+	// Parse requesterID (current user)
+	requesterUUID, err := uuid.Parse(currentUser.ID)
+	if err != nil {
+		return nil, errors.BadRequest("invalid", "invalid user ID")
+	}
+
+	// Create options for removing the member
+	removeOpts := &biz.RemoveMemberFromGroupOpts{
+		OrganizationID: orgUUID,
+		UserEmail:      req.GetUserEmail(),
+		RequesterID:    requesterUUID,
+	}
+
+	// Handle either groupID or groupName
+	if req.GetGroupId() != "" {
+		groupUUID, err := uuid.Parse(req.GetGroupId())
+		if err != nil {
+			return nil, errors.BadRequest("invalid", "invalid group ID")
+		}
+		removeOpts.GroupID = &groupUUID
+	} else if req.GetGroupName() != "" {
+		groupName := req.GetGroupName()
+		removeOpts.GroupName = &groupName
+	}
+
+	// Call the business logic to remove the member
+	err = g.groupUseCase.RemoveMemberFromGroup(ctx, removeOpts)
+	if err != nil {
+		return nil, handleUseCaseErr(err, g.log)
+	}
+
+	return &pb.GroupServiceRemoveMemberResponse{}, nil
 }
 
 // bizGroupToPb converts a biz.Group to a pb.Group protobuf message.
