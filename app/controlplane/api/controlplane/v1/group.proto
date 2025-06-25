@@ -123,9 +123,15 @@ message GroupServiceListMembersResponse {
 // GroupServiceListMembersRequest contains the identifier for the group whose members are to be listed
 message GroupServiceListMembersRequest {
   // UUID of the group to which the user will be added
-  optional string group_id = 1 [(buf.validate.field).string.uuid = true, (buf.validate.field).ignore_empty = true];
+  optional string group_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).ignore_empty = true
+  ];
   // Name of the group to which the user will be added, if group_id is not provided
-  optional string group_name = 2 [(buf.validate.field).string.min_len = 1, (buf.validate.field).ignore_empty = true];
+  optional string group_name = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).ignore_empty = true
+  ];
   // Optional filter to search only by maintainers or not
   optional bool maintainers = 3 [(buf.validate.field).ignore_empty = true];
   // Optional filter to search by member email address
@@ -144,9 +150,15 @@ message GroupServiceListMembersRequest {
 // GroupServiceAddMemberRequest contains the information needed to add a user to a group
 message GroupServiceAddMemberRequest {
   // UUID of the group to which the user will be added
-  optional string group_id = 1 [(buf.validate.field).string.uuid = true, (buf.validate.field).ignore_empty = true];
+  optional string group_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).ignore_empty = true
+  ];
   // Name of the group to which the user will be added, if group_id is not provided
-  optional string group_name = 2 [(buf.validate.field).string.min_len = 1, (buf.validate.field).ignore_empty = true];
+  optional string group_name = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).ignore_empty = true
+  ];
   // The user to add to the group
   string user_email = 3 [(buf.validate.field).string.email = true];
   // Indicates whether the user should have maintainer (admin) privileges in the group
@@ -166,9 +178,15 @@ message GroupServiceAddMemberResponse {}
 // GroupServiceRemoveMemberRequest contains the information needed to remove a user from a group
 message GroupServiceRemoveMemberRequest {
   // UUID of the group from which the user will be removed
-  optional string group_id = 1 [(buf.validate.field).string.uuid = true, (buf.validate.field).ignore_empty = true];
+  optional string group_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).ignore_empty = true
+  ];
   // Name of the group from which the user will be removed, if group_id is not provided
-  optional string group_name = 2 [(buf.validate.field).string.min_len = 1, (buf.validate.field).ignore_empty = true];
+  optional string group_name = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).ignore_empty = true
+  ];
   // The user to remove from the group
   string user_email = 3 [(buf.validate.field).string.email = true];
 
