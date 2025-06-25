@@ -5,8 +5,13 @@
   "description": "GroupServiceListMembersRequest contains the identifier for the group whose members are to be listed",
   "patternProperties": {
     "^(group_id)$": {
-      "description": "UUID of the group whose members are to be listed",
+      "description": "UUID of the group to which the user will be added",
       "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "type": "string"
+    },
+    "^(group_name)$": {
+      "description": "Name of the group to which the user will be added, if group_id is not provided",
+      "minLength": 1,
       "type": "string"
     },
     "^(member_email)$": {
@@ -16,8 +21,13 @@
   },
   "properties": {
     "groupId": {
-      "description": "UUID of the group whose members are to be listed",
+      "description": "UUID of the group to which the user will be added",
       "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "type": "string"
+    },
+    "groupName": {
+      "description": "Name of the group to which the user will be added, if group_id is not provided",
+      "minLength": 1,
       "type": "string"
     },
     "maintainers": {

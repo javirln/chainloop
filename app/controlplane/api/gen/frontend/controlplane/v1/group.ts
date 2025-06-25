@@ -93,8 +93,14 @@ export interface GroupServiceListMembersResponse {
 
 /** GroupServiceListMembersRequest contains the identifier for the group whose members are to be listed */
 export interface GroupServiceListMembersRequest {
-  /** UUID of the group whose members are to be listed */
-  groupId: string;
+  /** UUID of the group to which the user will be added */
+  groupId?:
+    | string
+    | undefined;
+  /** Name of the group to which the user will be added, if group_id is not provided */
+  groupName?:
+    | string
+    | undefined;
   /** Optional filter to search only by maintainers or not */
   maintainers?:
     | boolean
@@ -105,6 +111,44 @@ export interface GroupServiceListMembersRequest {
     | undefined;
   /** Pagination parameters to limit and offset results */
   pagination?: OffsetPaginationRequest;
+}
+
+/** GroupServiceAddMemberRequest contains the information needed to add a user to a group */
+export interface GroupServiceAddMemberRequest {
+  /** UUID of the group to which the user will be added */
+  groupId?:
+    | string
+    | undefined;
+  /** Name of the group to which the user will be added, if group_id is not provided */
+  groupName?:
+    | string
+    | undefined;
+  /** The user to add to the group */
+  userEmail: string;
+  /** Indicates whether the user should have maintainer (admin) privileges in the group */
+  isMaintainer: boolean;
+}
+
+/** GroupServiceAddMemberResponse contains the information about the group member that was added */
+export interface GroupServiceAddMemberResponse {
+}
+
+/** GroupServiceRemoveMemberRequest contains the information needed to remove a user from a group */
+export interface GroupServiceRemoveMemberRequest {
+  /** UUID of the group from which the user will be removed */
+  groupId?:
+    | string
+    | undefined;
+  /** Name of the group from which the user will be removed, if group_id is not provided */
+  groupName?:
+    | string
+    | undefined;
+  /** The user to remove from the group */
+  userEmail: string;
+}
+
+/** GroupServiceRemoveMemberResponse is returned upon successful removal of a user from a group */
+export interface GroupServiceRemoveMemberResponse {
 }
 
 /** Group represents a collection of users with shared access to resources */
@@ -860,22 +904,31 @@ export const GroupServiceListMembersResponse = {
 };
 
 function createBaseGroupServiceListMembersRequest(): GroupServiceListMembersRequest {
-  return { groupId: "", maintainers: undefined, memberEmail: undefined, pagination: undefined };
+  return {
+    groupId: undefined,
+    groupName: undefined,
+    maintainers: undefined,
+    memberEmail: undefined,
+    pagination: undefined,
+  };
 }
 
 export const GroupServiceListMembersRequest = {
   encode(message: GroupServiceListMembersRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.groupId !== "") {
+    if (message.groupId !== undefined) {
       writer.uint32(10).string(message.groupId);
     }
+    if (message.groupName !== undefined) {
+      writer.uint32(18).string(message.groupName);
+    }
     if (message.maintainers !== undefined) {
-      writer.uint32(16).bool(message.maintainers);
+      writer.uint32(24).bool(message.maintainers);
     }
     if (message.memberEmail !== undefined) {
-      writer.uint32(26).string(message.memberEmail);
+      writer.uint32(34).string(message.memberEmail);
     }
     if (message.pagination !== undefined) {
-      OffsetPaginationRequest.encode(message.pagination, writer.uint32(34).fork()).ldelim();
+      OffsetPaginationRequest.encode(message.pagination, writer.uint32(42).fork()).ldelim();
     }
     return writer;
   },
@@ -895,21 +948,28 @@ export const GroupServiceListMembersRequest = {
           message.groupId = reader.string();
           continue;
         case 2:
-          if (tag !== 16) {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.groupName = reader.string();
+          continue;
+        case 3:
+          if (tag !== 24) {
             break;
           }
 
           message.maintainers = reader.bool();
           continue;
-        case 3:
-          if (tag !== 26) {
+        case 4:
+          if (tag !== 34) {
             break;
           }
 
           message.memberEmail = reader.string();
           continue;
-        case 4:
-          if (tag !== 34) {
+        case 5:
+          if (tag !== 42) {
             break;
           }
 
@@ -926,7 +986,8 @@ export const GroupServiceListMembersRequest = {
 
   fromJSON(object: any): GroupServiceListMembersRequest {
     return {
-      groupId: isSet(object.groupId) ? String(object.groupId) : "",
+      groupId: isSet(object.groupId) ? String(object.groupId) : undefined,
+      groupName: isSet(object.groupName) ? String(object.groupName) : undefined,
       maintainers: isSet(object.maintainers) ? Boolean(object.maintainers) : undefined,
       memberEmail: isSet(object.memberEmail) ? String(object.memberEmail) : undefined,
       pagination: isSet(object.pagination) ? OffsetPaginationRequest.fromJSON(object.pagination) : undefined,
@@ -936,6 +997,7 @@ export const GroupServiceListMembersRequest = {
   toJSON(message: GroupServiceListMembersRequest): unknown {
     const obj: any = {};
     message.groupId !== undefined && (obj.groupId = message.groupId);
+    message.groupName !== undefined && (obj.groupName = message.groupName);
     message.maintainers !== undefined && (obj.maintainers = message.maintainers);
     message.memberEmail !== undefined && (obj.memberEmail = message.memberEmail);
     message.pagination !== undefined &&
@@ -951,12 +1013,288 @@ export const GroupServiceListMembersRequest = {
     object: I,
   ): GroupServiceListMembersRequest {
     const message = createBaseGroupServiceListMembersRequest();
-    message.groupId = object.groupId ?? "";
+    message.groupId = object.groupId ?? undefined;
+    message.groupName = object.groupName ?? undefined;
     message.maintainers = object.maintainers ?? undefined;
     message.memberEmail = object.memberEmail ?? undefined;
     message.pagination = (object.pagination !== undefined && object.pagination !== null)
       ? OffsetPaginationRequest.fromPartial(object.pagination)
       : undefined;
+    return message;
+  },
+};
+
+function createBaseGroupServiceAddMemberRequest(): GroupServiceAddMemberRequest {
+  return { groupId: undefined, groupName: undefined, userEmail: "", isMaintainer: false };
+}
+
+export const GroupServiceAddMemberRequest = {
+  encode(message: GroupServiceAddMemberRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.groupId !== undefined) {
+      writer.uint32(10).string(message.groupId);
+    }
+    if (message.groupName !== undefined) {
+      writer.uint32(18).string(message.groupName);
+    }
+    if (message.userEmail !== "") {
+      writer.uint32(26).string(message.userEmail);
+    }
+    if (message.isMaintainer === true) {
+      writer.uint32(32).bool(message.isMaintainer);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): GroupServiceAddMemberRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGroupServiceAddMemberRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag !== 10) {
+            break;
+          }
+
+          message.groupId = reader.string();
+          continue;
+        case 2:
+          if (tag !== 18) {
+            break;
+          }
+
+          message.groupName = reader.string();
+          continue;
+        case 3:
+          if (tag !== 26) {
+            break;
+          }
+
+          message.userEmail = reader.string();
+          continue;
+        case 4:
+          if (tag !== 32) {
+            break;
+          }
+
+          message.isMaintainer = reader.bool();
+          continue;
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GroupServiceAddMemberRequest {
+    return {
+      groupId: isSet(object.groupId) ? String(object.groupId) : undefined,
+      groupName: isSet(object.groupName) ? String(object.groupName) : undefined,
+      userEmail: isSet(object.userEmail) ? String(object.userEmail) : "",
+      isMaintainer: isSet(object.isMaintainer) ? Boolean(object.isMaintainer) : false,
+    };
+  },
+
+  toJSON(message: GroupServiceAddMemberRequest): unknown {
+    const obj: any = {};
+    message.groupId !== undefined && (obj.groupId = message.groupId);
+    message.groupName !== undefined && (obj.groupName = message.groupName);
+    message.userEmail !== undefined && (obj.userEmail = message.userEmail);
+    message.isMaintainer !== undefined && (obj.isMaintainer = message.isMaintainer);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GroupServiceAddMemberRequest>, I>>(base?: I): GroupServiceAddMemberRequest {
+    return GroupServiceAddMemberRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<GroupServiceAddMemberRequest>, I>>(object: I): GroupServiceAddMemberRequest {
+    const message = createBaseGroupServiceAddMemberRequest();
+    message.groupId = object.groupId ?? undefined;
+    message.groupName = object.groupName ?? undefined;
+    message.userEmail = object.userEmail ?? "";
+    message.isMaintainer = object.isMaintainer ?? false;
+    return message;
+  },
+};
+
+function createBaseGroupServiceAddMemberResponse(): GroupServiceAddMemberResponse {
+  return {};
+}
+
+export const GroupServiceAddMemberResponse = {
+  encode(_: GroupServiceAddMemberResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): GroupServiceAddMemberResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGroupServiceAddMemberResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): GroupServiceAddMemberResponse {
+    return {};
+  },
+
+  toJSON(_: GroupServiceAddMemberResponse): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GroupServiceAddMemberResponse>, I>>(base?: I): GroupServiceAddMemberResponse {
+    return GroupServiceAddMemberResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<GroupServiceAddMemberResponse>, I>>(_: I): GroupServiceAddMemberResponse {
+    const message = createBaseGroupServiceAddMemberResponse();
+    return message;
+  },
+};
+
+function createBaseGroupServiceRemoveMemberRequest(): GroupServiceRemoveMemberRequest {
+  return { groupId: undefined, groupName: undefined, userEmail: "" };
+}
+
+export const GroupServiceRemoveMemberRequest = {
+  encode(message: GroupServiceRemoveMemberRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.groupId !== undefined) {
+      writer.uint32(10).string(message.groupId);
+    }
+    if (message.groupName !== undefined) {
+      writer.uint32(18).string(message.groupName);
+    }
+    if (message.userEmail !== "") {
+      writer.uint32(26).string(message.userEmail);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): GroupServiceRemoveMemberRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGroupServiceRemoveMemberRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag !== 10) {
+            break;
+          }
+
+          message.groupId = reader.string();
+          continue;
+        case 2:
+          if (tag !== 18) {
+            break;
+          }
+
+          message.groupName = reader.string();
+          continue;
+        case 3:
+          if (tag !== 26) {
+            break;
+          }
+
+          message.userEmail = reader.string();
+          continue;
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GroupServiceRemoveMemberRequest {
+    return {
+      groupId: isSet(object.groupId) ? String(object.groupId) : undefined,
+      groupName: isSet(object.groupName) ? String(object.groupName) : undefined,
+      userEmail: isSet(object.userEmail) ? String(object.userEmail) : "",
+    };
+  },
+
+  toJSON(message: GroupServiceRemoveMemberRequest): unknown {
+    const obj: any = {};
+    message.groupId !== undefined && (obj.groupId = message.groupId);
+    message.groupName !== undefined && (obj.groupName = message.groupName);
+    message.userEmail !== undefined && (obj.userEmail = message.userEmail);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GroupServiceRemoveMemberRequest>, I>>(base?: I): GroupServiceRemoveMemberRequest {
+    return GroupServiceRemoveMemberRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<GroupServiceRemoveMemberRequest>, I>>(
+    object: I,
+  ): GroupServiceRemoveMemberRequest {
+    const message = createBaseGroupServiceRemoveMemberRequest();
+    message.groupId = object.groupId ?? undefined;
+    message.groupName = object.groupName ?? undefined;
+    message.userEmail = object.userEmail ?? "";
+    return message;
+  },
+};
+
+function createBaseGroupServiceRemoveMemberResponse(): GroupServiceRemoveMemberResponse {
+  return {};
+}
+
+export const GroupServiceRemoveMemberResponse = {
+  encode(_: GroupServiceRemoveMemberResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): GroupServiceRemoveMemberResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGroupServiceRemoveMemberResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): GroupServiceRemoveMemberResponse {
+    return {};
+  },
+
+  toJSON(_: GroupServiceRemoveMemberResponse): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GroupServiceRemoveMemberResponse>, I>>(
+    base?: I,
+  ): GroupServiceRemoveMemberResponse {
+    return GroupServiceRemoveMemberResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<GroupServiceRemoveMemberResponse>, I>>(
+    _: I,
+  ): GroupServiceRemoveMemberResponse {
+    const message = createBaseGroupServiceRemoveMemberResponse();
     return message;
   },
 };
@@ -1207,6 +1545,16 @@ export interface GroupService {
     request: DeepPartial<GroupServiceListMembersRequest>,
     metadata?: grpc.Metadata,
   ): Promise<GroupServiceListMembersResponse>;
+  /** AddMember adds a user to a group with an optional maintainer role */
+  AddMember(
+    request: DeepPartial<GroupServiceAddMemberRequest>,
+    metadata?: grpc.Metadata,
+  ): Promise<GroupServiceAddMemberResponse>;
+  /** RemoveMember removes a user from a group */
+  RemoveMember(
+    request: DeepPartial<GroupServiceRemoveMemberRequest>,
+    metadata?: grpc.Metadata,
+  ): Promise<GroupServiceRemoveMemberResponse>;
 }
 
 export class GroupServiceClientImpl implements GroupService {
@@ -1220,6 +1568,8 @@ export class GroupServiceClientImpl implements GroupService {
     this.Update = this.Update.bind(this);
     this.Delete = this.Delete.bind(this);
     this.ListMembers = this.ListMembers.bind(this);
+    this.AddMember = this.AddMember.bind(this);
+    this.RemoveMember = this.RemoveMember.bind(this);
   }
 
   Create(
@@ -1256,6 +1606,20 @@ export class GroupServiceClientImpl implements GroupService {
     metadata?: grpc.Metadata,
   ): Promise<GroupServiceListMembersResponse> {
     return this.rpc.unary(GroupServiceListMembersDesc, GroupServiceListMembersRequest.fromPartial(request), metadata);
+  }
+
+  AddMember(
+    request: DeepPartial<GroupServiceAddMemberRequest>,
+    metadata?: grpc.Metadata,
+  ): Promise<GroupServiceAddMemberResponse> {
+    return this.rpc.unary(GroupServiceAddMemberDesc, GroupServiceAddMemberRequest.fromPartial(request), metadata);
+  }
+
+  RemoveMember(
+    request: DeepPartial<GroupServiceRemoveMemberRequest>,
+    metadata?: grpc.Metadata,
+  ): Promise<GroupServiceRemoveMemberResponse> {
+    return this.rpc.unary(GroupServiceRemoveMemberDesc, GroupServiceRemoveMemberRequest.fromPartial(request), metadata);
   }
 }
 
@@ -1389,6 +1753,52 @@ export const GroupServiceListMembersDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = GroupServiceListMembersResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const GroupServiceAddMemberDesc: UnaryMethodDefinitionish = {
+  methodName: "AddMember",
+  service: GroupServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return GroupServiceAddMemberRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = GroupServiceAddMemberResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const GroupServiceRemoveMemberDesc: UnaryMethodDefinitionish = {
+  methodName: "RemoveMember",
+  service: GroupServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return GroupServiceRemoveMemberRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = GroupServiceRemoveMemberResponse.decode(data);
       return {
         ...value,
         toObject() {

@@ -38,6 +38,10 @@ service GroupService {
   rpc Delete(GroupServiceDeleteRequest) returns (GroupServiceDeleteResponse) {}
   // ListMembers retrieves the members of a specific group
   rpc ListMembers(GroupServiceListMembersRequest) returns (GroupServiceListMembersResponse) {}
+  // AddMember adds a user to a group with an optional maintainer role
+  rpc AddMember(GroupServiceAddMemberRequest) returns (GroupServiceAddMemberResponse) {}
+  // RemoveMember removes a user from a group
+  rpc RemoveMember(GroupServiceRemoveMemberRequest) returns (GroupServiceRemoveMemberResponse) {}
 }
 
 // GroupServiceCreateRequest contains the information needed to create a new group
@@ -118,15 +122,66 @@ message GroupServiceListMembersResponse {
 
 // GroupServiceListMembersRequest contains the identifier for the group whose members are to be listed
 message GroupServiceListMembersRequest {
-  // UUID of the group whose members are to be listed
-  string group_id = 1 [(buf.validate.field).string.uuid = true];
+  // UUID of the group to which the user will be added
+  optional string group_id = 1 [(buf.validate.field).string.uuid = true, (buf.validate.field).ignore_empty = true];
+  // Name of the group to which the user will be added, if group_id is not provided
+  optional string group_name = 2 [(buf.validate.field).string.min_len = 1, (buf.validate.field).ignore_empty = true];
   // Optional filter to search only by maintainers or not
-  optional bool maintainers = 2 [(buf.validate.field).ignore_empty = true];
+  optional bool maintainers = 3 [(buf.validate.field).ignore_empty = true];
   // Optional filter to search by member email address
-  optional string member_email = 3 [(buf.validate.field).ignore_empty = true];
+  optional string member_email = 4 [(buf.validate.field).ignore_empty = true];
   // Pagination parameters to limit and offset results
-  OffsetPaginationRequest pagination = 4;
+  OffsetPaginationRequest pagination = 5;
+
+  // Custom validation to ensure that either group_id or group_name is provided
+  option (buf.validate.message).cel = {
+    id: "group_id_or_group_name_required"
+    expression: "!(this.group_id == '' && this.group_name == '') && !(this.group_id != '' && this.group_name != '')"
+    message: "either group_id or group_name must be provided, but not both."
+  };
 }
+
+// GroupServiceAddMemberRequest contains the information needed to add a user to a group
+message GroupServiceAddMemberRequest {
+  // UUID of the group to which the user will be added
+  optional string group_id = 1 [(buf.validate.field).string.uuid = true, (buf.validate.field).ignore_empty = true];
+  // Name of the group to which the user will be added, if group_id is not provided
+  optional string group_name = 2 [(buf.validate.field).string.min_len = 1, (buf.validate.field).ignore_empty = true];
+  // The user to add to the group
+  string user_email = 3 [(buf.validate.field).string.email = true];
+  // Indicates whether the user should have maintainer (admin) privileges in the group
+  bool is_maintainer = 4;
+
+  // Custom validation to ensure that either group_id or group_name is provided
+  option (buf.validate.message).cel = {
+    id: "group_id_or_group_name_required"
+    expression: "!(this.group_id == '' && this.group_name == '') && !(this.group_id != '' && this.group_name != '')"
+    message: "either group_id or group_name must be provided, but not both."
+  };
+}
+
+// GroupServiceAddMemberResponse contains the information about the group member that was added
+message GroupServiceAddMemberResponse {}
+
+// GroupServiceRemoveMemberRequest contains the information needed to remove a user from a group
+message GroupServiceRemoveMemberRequest {
+  // UUID of the group from which the user will be removed
+  optional string group_id = 1 [(buf.validate.field).string.uuid = true, (buf.validate.field).ignore_empty = true];
+  // Name of the group from which the user will be removed, if group_id is not provided
+  optional string group_name = 2 [(buf.validate.field).string.min_len = 1, (buf.validate.field).ignore_empty = true];
+  // The user to remove from the group
+  string user_email = 3 [(buf.validate.field).string.email = true];
+
+  // Custom validation to ensure that either group_id or group_name is provided
+  option (buf.validate.message).cel = {
+    id: "group_id_or_group_name_required"
+    expression: "!(this.group_id == '' && this.group_name == '') && !(this.group_id != '' && this.group_name != '')"
+    message: "either group_id or group_name must be provided, but not both."
+  };
+}
+
+// GroupServiceRemoveMemberResponse is returned upon successful removal of a user from a group
+message GroupServiceRemoveMemberResponse {}
 
 // Group represents a collection of users with shared access to resources
 message Group {

@@ -484,12 +484,6 @@ func (s *groupMembersIntegrationTestSuite) SetupTest() {
 	assert.NoError(err)
 }
 
-func (s *groupMembersIntegrationTestSuite) TearDownTest() {
-	ctx := context.Background()
-	// Clean up the database after each test
-	_, _ = s.Data.DB.Group.Delete().Exec(ctx)
-}
-
 // Test group membership operations
 func (s *groupMembersIntegrationTestSuite) TestListMembers() {
 	ctx := context.Background()
@@ -508,7 +502,11 @@ func (s *groupMembersIntegrationTestSuite) TestListMembers() {
 	require.NoError(s.T(), err)
 
 	s.Run("initial group has creator as maintainer", func() {
-		members, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), s.group.ID, nil, nil, nil)
+		groupID := &s.group.ID
+		opts := &biz.ListMembersOpts{
+			GroupID: groupID,
+		}
+		members, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), opts, nil)
 		s.NoError(err)
 		s.Equal(1, len(members))
 		s.Equal(1, count)
@@ -516,33 +514,43 @@ func (s *groupMembersIntegrationTestSuite) TestListMembers() {
 		s.True(members[0].Maintainer)
 	})
 
-	// TODO: Add tests for adding members to groups once that functionality is implemented
-
 	s.Run("filter members by maintainer status", func() {
+		groupID := &s.group.ID
 		isTrue := true
-		members, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), s.group.ID, &isTrue, nil, nil)
+		opts := &biz.ListMembersOpts{
+			GroupID:     groupID,
+			Maintainers: &isTrue,
+		}
+		members, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), opts, nil)
 		s.NoError(err)
 		s.Equal(1, len(members))
 		s.Equal(1, count)
 		s.True(members[0].Maintainer)
 
 		isFalse := false
-		members, count, err = s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), s.group.ID, &isFalse, nil, nil)
+		opts.Maintainers = &isFalse
+		members, count, err = s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), opts, nil)
 		s.NoError(err)
 		s.Equal(0, len(members))
 		s.Equal(0, count)
 	})
 
 	s.Run("filter members by email", func() {
+		groupID := &s.group.ID
 		email := s.user.Email
-		members, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), s.group.ID, nil, &email, nil)
+		opts := &biz.ListMembersOpts{
+			GroupID:     groupID,
+			MemberEmail: &email,
+		}
+		members, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), opts, nil)
 		s.NoError(err)
 		s.Equal(1, len(members))
 		s.Equal(1, count)
 		s.Equal(s.user.Email, members[0].User.Email)
 
 		nonExistentEmail := "nonexistent@example.com"
-		members, count, err = s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), s.group.ID, nil, &nonExistentEmail, nil)
+		opts.MemberEmail = &nonExistentEmail
+		members, count, err = s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), opts, nil)
 		s.NoError(err)
 		s.Equal(0, len(members))
 		s.Equal(0, count)
@@ -550,13 +558,548 @@ func (s *groupMembersIntegrationTestSuite) TestListMembers() {
 
 	s.Run("list members with pagination", func() {
 		// TODO: Add more members to the group once that functionality is implemented
-
+		groupID := &s.group.ID
+		opts := &biz.ListMembersOpts{
+			GroupID: groupID,
+		}
 		paginationOpts, err := pagination.NewOffsetPaginationOpts(0, 1)
 		require.NoError(s.T(), err)
 
-		members, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), s.group.ID, nil, nil, paginationOpts)
+		members, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), opts, paginationOpts)
 		s.NoError(err)
 		s.Equal(1, len(members))
 		s.Equal(1, count)
+	})
+
+	s.Run("list members with group name", func() {
+		groupName := s.group.Name
+		opts := &biz.ListMembersOpts{
+			GroupName: &groupName,
+		}
+		members, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), opts, nil)
+		s.NoError(err)
+		s.Equal(1, len(members))
+		s.Equal(1, count)
+		s.Equal(s.user.ID, members[0].User.ID)
+	})
+}
+
+// Test adding members to groups
+func (s *groupMembersIntegrationTestSuite) TestAddMemberToGroup() {
+	ctx := context.Background()
+
+	// Create additional users
+	user2, err := s.User.UpsertByEmail(ctx, "add-user2@example.com", nil)
+	require.NoError(s.T(), err)
+
+	user3, err := s.User.UpsertByEmail(ctx, "add-user3@example.com", nil)
+	require.NoError(s.T(), err)
+
+	// Add users to organization
+	_, err = s.Membership.Create(ctx, s.org.ID, user2.ID)
+	require.NoError(s.T(), err)
+	_, err = s.Membership.Create(ctx, s.org.ID, user3.ID)
+	require.NoError(s.T(), err)
+
+	s.Run("add member using group ID", func() {
+		// Add user2 as a regular member
+		// Create options for adding member
+		opts := &biz.AddMemberToGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &s.group.ID,
+			UserEmail:      "add-user2@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID), // The creator is a maintainer
+			Maintainer:     false,
+		}
+
+		membership, err := s.Group.AddMemberToGroup(ctx, opts)
+		s.NoError(err)
+		s.NotNil(membership)
+		s.Equal(user2.ID, membership.User.ID)
+		s.False(membership.Maintainer)
+
+		// Verify the member was added by listing members
+		members, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), &biz.ListMembersOpts{
+			GroupID: &s.group.ID,
+		}, nil)
+		s.NoError(err)
+		s.Equal(2, len(members))
+		s.Equal(2, count)
+	})
+
+	s.Run("add member using group name", func() {
+		// Add user3 as a maintainer
+		groupName := s.group.Name
+		opts := &biz.AddMemberToGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupName:      &groupName,
+			UserEmail:      "add-user3@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID), // The creator is a maintainer
+			Maintainer:     true,
+		}
+
+		membership, err := s.Group.AddMemberToGroup(ctx, opts)
+		s.NoError(err)
+		s.NotNil(membership)
+		s.Equal(user3.ID, membership.User.ID)
+		s.True(membership.Maintainer)
+
+		// Verify the member was added by listing members
+		members, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), &biz.ListMembersOpts{
+			GroupID: &s.group.ID,
+		}, nil)
+		s.NoError(err)
+		s.Equal(3, len(members))
+		s.Equal(3, count)
+	})
+
+	s.Run("add member to group in wrong organization", func() {
+		// Create a new organization
+		org2, err := s.Organization.CreateWithRandomName(ctx)
+		require.NoError(s.T(), err)
+
+		// Attempt to add user2 to a group in the wrong organization
+		opts := &biz.AddMemberToGroupOpts{
+			OrganizationID: uuid.MustParse(org2.ID),
+			GroupID:        &s.group.ID,
+			UserEmail:      "add-user2@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID),
+			Maintainer:     false,
+		}
+
+		_, err = s.Group.AddMemberToGroup(ctx, opts)
+		s.Error(err)
+		s.True(biz.IsNotFound(err))
+	})
+
+	s.Run("add member to non-existent group", func() {
+		nonExistentGroupID := uuid.New()
+		opts := &biz.AddMemberToGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &nonExistentGroupID,
+			UserEmail:      "add-user2@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID),
+			Maintainer:     false,
+		}
+
+		_, err := s.Group.AddMemberToGroup(ctx, opts)
+		s.Error(err)
+		s.True(biz.IsNotFound(err))
+	})
+
+	s.Run("add member who is not in the organization", func() {
+		// Create user who is not in the organization
+		_, err := s.User.UpsertByEmail(ctx, "not-in-org@example.com", nil)
+		require.NoError(s.T(), err)
+		// Note: not adding this user to the organization
+
+		opts := &biz.AddMemberToGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &s.group.ID,
+			UserEmail:      "not-in-org@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID),
+			Maintainer:     false,
+		}
+
+		_, err = s.Group.AddMemberToGroup(ctx, opts)
+		s.Error(err)
+		s.ErrorContains(err, "user with the provided email is not a member of the organization")
+	})
+
+	s.Run("add member who is already in the group", func() {
+		// Try to add user2 again (who we added in the first test)
+		opts := &biz.AddMemberToGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &s.group.ID,
+			UserEmail:      "add-user2@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID),
+			Maintainer:     true,
+		}
+
+		_, err := s.Group.AddMemberToGroup(ctx, opts)
+		s.Error(err)
+		s.True(biz.IsErrAlreadyExists(err))
+
+		// Verify the number of members hasn't changed
+		_, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), &biz.ListMembersOpts{
+			GroupID: &s.group.ID,
+		}, nil)
+		s.NoError(err)
+		s.Equal(3, count) // still the original 3 members
+	})
+
+	s.Run("provide both group ID and group name", func() {
+		groupName := s.group.Name
+		// Create a new user
+		user4, err := s.User.UpsertByEmail(ctx, "add-user4@example.com", nil)
+		require.NoError(s.T(), err)
+		_, err = s.Membership.Create(ctx, s.org.ID, user4.ID)
+		require.NoError(s.T(), err)
+
+		// Try to add providing both group ID and name
+		opts := &biz.AddMemberToGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &s.group.ID,
+			GroupName:      &groupName,
+			UserEmail:      "add-user4@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID),
+			Maintainer:     false,
+		}
+
+		_, err = s.Group.AddMemberToGroup(ctx, opts)
+		s.Error(err)
+		s.True(biz.IsErrValidation(err))
+	})
+
+	s.Run("provide neither group ID nor group name", func() {
+		// Create a new user
+		user5, err := s.User.UpsertByEmail(ctx, "add-user5@example.com", nil)
+		require.NoError(s.T(), err)
+		_, err = s.Membership.Create(ctx, s.org.ID, user5.ID)
+		require.NoError(s.T(), err)
+
+		// Try to add providing neither group ID nor name
+		opts := &biz.AddMemberToGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			UserEmail:      "add-user5@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID),
+			Maintainer:     false,
+		}
+
+		_, err = s.Group.AddMemberToGroup(ctx, opts)
+		s.Error(err)
+		s.True(biz.IsErrValidation(err))
+	})
+
+	s.Run("requester is not a maintainer", func() {
+		// Create a new user that is not a maintainer
+		regularUser, err := s.User.UpsertByEmail(ctx, "regular-user@example.com", nil)
+		require.NoError(s.T(), err)
+		_, err = s.Membership.Create(ctx, s.org.ID, regularUser.ID)
+		require.NoError(s.T(), err)
+
+		// Add the regular user to the group (not as a maintainer)
+		opts := &biz.AddMemberToGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &s.group.ID,
+			UserEmail:      "regular-user@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID),
+			Maintainer:     false,
+		}
+
+		membership, err := s.Group.AddMemberToGroup(ctx, opts)
+		s.NoError(err)
+		s.NotNil(membership)
+
+		// Create another user to be added by the regular user
+		newUser, err := s.User.UpsertByEmail(ctx, "new-user@example.com", nil)
+		require.NoError(s.T(), err)
+		_, err = s.Membership.Create(ctx, s.org.ID, newUser.ID)
+		require.NoError(s.T(), err)
+
+		// Try to add a member with the regular user as requester
+		opts = &biz.AddMemberToGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &s.group.ID,
+			UserEmail:      "new-user@example.com",
+			RequesterID:    uuid.MustParse(regularUser.ID),
+			Maintainer:     false,
+		}
+
+		_, err = s.Group.AddMemberToGroup(ctx, opts)
+		s.Error(err)
+		s.Contains(err.Error(), "maintainer")
+	})
+}
+
+// Test removing members from groups
+func (s *groupMembersIntegrationTestSuite) TestRemoveMemberFromGroup() {
+	ctx := context.Background()
+
+	// Create additional users
+	user2, err := s.User.UpsertByEmail(ctx, "remove-user2@example.com", nil)
+	require.NoError(s.T(), err)
+
+	user3, err := s.User.UpsertByEmail(ctx, "remove-user3@example.com", nil)
+	require.NoError(s.T(), err)
+
+	user4, err := s.User.UpsertByEmail(ctx, "remove-user4@example.com", nil)
+	require.NoError(s.T(), err)
+
+	// Add users to organization
+	_, err = s.Membership.Create(ctx, s.org.ID, user2.ID)
+	require.NoError(s.T(), err)
+	_, err = s.Membership.Create(ctx, s.org.ID, user3.ID)
+	require.NoError(s.T(), err)
+	_, err = s.Membership.Create(ctx, s.org.ID, user4.ID)
+	require.NoError(s.T(), err)
+
+	// Add users to the group
+	opts1 := &biz.AddMemberToGroupOpts{
+		OrganizationID: uuid.MustParse(s.org.ID),
+		GroupID:        &s.group.ID,
+		UserEmail:      "remove-user2@example.com",
+		RequesterID:    uuid.MustParse(s.user.ID),
+		Maintainer:     false,
+	}
+	_, err = s.Group.AddMemberToGroup(ctx, opts1)
+	require.NoError(s.T(), err)
+
+	opts2 := &biz.AddMemberToGroupOpts{
+		OrganizationID: uuid.MustParse(s.org.ID),
+		GroupID:        &s.group.ID,
+		UserEmail:      "remove-user3@example.com",
+		RequesterID:    uuid.MustParse(s.user.ID),
+		Maintainer:     true,
+	}
+	_, err = s.Group.AddMemberToGroup(ctx, opts2)
+	require.NoError(s.T(), err)
+
+	opts3 := &biz.AddMemberToGroupOpts{
+		OrganizationID: uuid.MustParse(s.org.ID),
+		GroupID:        &s.group.ID,
+		UserEmail:      "remove-user4@example.com",
+		RequesterID:    uuid.MustParse(s.user.ID),
+		Maintainer:     false,
+	}
+	_, err = s.Group.AddMemberToGroup(ctx, opts3)
+	require.NoError(s.T(), err)
+
+	// Verify initial member count
+	members, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), &biz.ListMembersOpts{
+		GroupID: &s.group.ID,
+	}, nil)
+	s.NoError(err)
+	s.Equal(4, len(members)) // creator + 3 added users
+	s.Equal(4, count)
+
+	s.Run("remove a regular member from group", func() {
+		// Remove user2 (regular member)
+		removeOpts := &biz.RemoveMemberFromGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &s.group.ID,
+			UserEmail:      "remove-user2@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID), // Creator is a maintainer
+		}
+
+		err := s.Group.RemoveMemberFromGroup(ctx, removeOpts)
+		s.NoError(err)
+
+		// Verify member was removed
+		members, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), &biz.ListMembersOpts{
+			GroupID: &s.group.ID,
+		}, nil)
+		s.NoError(err)
+		s.Equal(3, len(members))
+		s.Equal(3, count)
+
+		// Verify the removed user is not in the list
+		for _, member := range members {
+			s.NotEqual(user2.ID, member.User.ID)
+		}
+	})
+
+	s.Run("remove a maintainer from group", func() {
+		// Remove user3 (maintainer)
+		removeOpts := &biz.RemoveMemberFromGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &s.group.ID,
+			UserEmail:      "remove-user3@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID), // Creator is a maintainer
+		}
+
+		err := s.Group.RemoveMemberFromGroup(ctx, removeOpts)
+		s.NoError(err)
+
+		// Verify member was removed
+		members, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), &biz.ListMembersOpts{
+			GroupID: &s.group.ID,
+		}, nil)
+		s.NoError(err)
+		s.Equal(2, len(members))
+		s.Equal(2, count)
+
+		// Check remaining members - user3 should not be present
+		for _, member := range members {
+			s.NotEqual(user3.ID, member.User.ID)
+		}
+
+		// Verify we still have at least one maintainer (the original creator)
+		foundMaintainer := false
+		for _, member := range members {
+			if member.Maintainer {
+				foundMaintainer = true
+				break
+			}
+		}
+		s.True(foundMaintainer, "Group should still have at least one maintainer")
+	})
+
+	s.Run("try to remove non-existent member", func() {
+		// Create a user who's not in the group
+		nonMemberUser, err := s.User.UpsertByEmail(ctx, "non-member@example.com", nil)
+		require.NoError(s.T(), err)
+		_, err = s.Membership.Create(ctx, s.org.ID, nonMemberUser.ID)
+		require.NoError(s.T(), err)
+
+		// Try to remove a user who's not in the group
+		removeOpts := &biz.RemoveMemberFromGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &s.group.ID,
+			UserEmail:      "non-member@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID),
+		}
+
+		err = s.Group.RemoveMemberFromGroup(ctx, removeOpts)
+		s.Error(err)
+		s.True(biz.IsNotFound(err))
+
+		// Member count should remain unchanged
+		_, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), &biz.ListMembersOpts{
+			GroupID: &s.group.ID,
+		}, nil)
+		s.NoError(err)
+		s.Equal(2, count)
+	})
+
+	s.Run("remove member from wrong organization", func() {
+		// Create a new organization and group
+		org2, err := s.Organization.CreateWithRandomName(ctx)
+		require.NoError(s.T(), err)
+
+		// Try to remove user4 using the wrong org ID
+		removeOpts := &biz.RemoveMemberFromGroupOpts{
+			OrganizationID: uuid.MustParse(org2.ID),
+			GroupID:        &s.group.ID,
+			UserEmail:      "remove-user4@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID),
+		}
+
+		err = s.Group.RemoveMemberFromGroup(ctx, removeOpts)
+		s.Error(err)
+		s.True(biz.IsNotFound(err))
+
+		// Member count should remain unchanged
+		_, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), &biz.ListMembersOpts{
+			GroupID: &s.group.ID,
+		}, nil)
+		s.NoError(err)
+		s.Equal(2, count)
+	})
+
+	s.Run("remove member from non-existent group", func() {
+		nonExistentGroupID := uuid.New()
+		removeOpts := &biz.RemoveMemberFromGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &nonExistentGroupID,
+			UserEmail:      "remove-user4@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID),
+		}
+
+		err = s.Group.RemoveMemberFromGroup(ctx, removeOpts)
+		s.Error(err)
+		s.True(biz.IsNotFound(err))
+	})
+
+	s.Run("requester is not a maintainer", func() {
+		// Create a new user that is not a maintainer
+		regularUser, err := s.User.UpsertByEmail(ctx, "regular-remove-user@example.com", nil)
+		require.NoError(s.T(), err)
+		_, err = s.Membership.Create(ctx, s.org.ID, regularUser.ID)
+		require.NoError(s.T(), err)
+
+		// Add the regular user to the group (not as a maintainer)
+		addOpts := &biz.AddMemberToGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &s.group.ID,
+			UserEmail:      "regular-remove-user@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID),
+			Maintainer:     false,
+		}
+
+		_, err = s.Group.AddMemberToGroup(ctx, addOpts)
+		s.NoError(err)
+
+		// Try to remove a member with the regular user as requester
+		removeOpts := &biz.RemoveMemberFromGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &s.group.ID,
+			UserEmail:      "remove-user4@example.com",
+			RequesterID:    uuid.MustParse(regularUser.ID),
+		}
+
+		err = s.Group.RemoveMemberFromGroup(ctx, removeOpts)
+		s.Error(err)
+		s.Contains(err.Error(), "maintainer")
+	})
+
+	s.Run("try to remove the last maintainer", func() {
+		// Find the creator (should be the only maintainer now)
+		members, _, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), &biz.ListMembersOpts{GroupID: &s.group.ID}, nil)
+		s.NoError(err)
+
+		var creatorID string
+		var creatorEmail string
+		for _, member := range members {
+			if member.Maintainer {
+				creatorID = member.User.ID
+				creatorEmail = member.User.Email
+				break
+			}
+		}
+		s.NotEmpty(creatorID, "Should have found a maintainer")
+
+		// Try to remove the last maintainer
+		removeOpts := &biz.RemoveMemberFromGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &s.group.ID,
+			UserEmail:      creatorEmail,
+			RequesterID:    uuid.MustParse(creatorID), // Remove yourself
+		}
+
+		err = s.Group.RemoveMemberFromGroup(ctx, removeOpts)
+		// We now prevent removing the last maintainer
+		s.Error(err)
+		s.Contains(err.Error(), "cannot remove the last maintainer")
+
+		// Verify the member was not removed
+		_, count, err := s.Group.ListMembers(ctx, uuid.MustParse(s.org.ID), &biz.ListMembersOpts{
+			GroupID: &s.group.ID,
+		}, nil)
+		s.NoError(err)
+		s.Equal(3, count) // user4, regularUser, and the maintainer should remain
+	})
+
+	s.Run("requester not part of organization", func() {
+		// Create a user who is not in any organization
+		externalUser, err := s.User.UpsertByEmail(ctx, "external-user@example.com", nil)
+		require.NoError(s.T(), err)
+		// Intentionally not adding to organization
+
+		// Try to remove a member with an external user as requester
+		removeOpts := &biz.RemoveMemberFromGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &s.group.ID,
+			UserEmail:      "remove-user4@example.com",
+			RequesterID:    uuid.MustParse(externalUser.ID),
+		}
+
+		err = s.Group.RemoveMemberFromGroup(ctx, removeOpts)
+		s.Error(err)
+		s.Contains(err.Error(), "organization does not exist")
+	})
+
+	s.Run("non-existent user email", func() {
+		// Try to remove a non-existent user
+		removeOpts := &biz.RemoveMemberFromGroupOpts{
+			OrganizationID: uuid.MustParse(s.org.ID),
+			GroupID:        &s.group.ID,
+			UserEmail:      "non-existent-user@example.com",
+			RequesterID:    uuid.MustParse(s.user.ID),
+		}
+
+		err = s.Group.RemoveMemberFromGroup(ctx, removeOpts)
+		s.Error(err)
+		s.Contains(err.Error(), "not a member of the organization")
 	})
 }
